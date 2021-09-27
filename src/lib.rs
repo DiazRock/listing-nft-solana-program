@@ -23,7 +23,7 @@ entrypoint!(process_instruction);
 
 pub fn process_instruction(
     program_id: &Pubkey, // Public key of the account the nft_list program was loaded into
-    accounts: &[AccountInfo], // The account of the nft_owner
+    accounts: &[AccountInfo], // The account of the nft to be listed
     instruction_data: &[u8], // The instruction data for the operations
 ) -> ProgramResult {
     // Accounts its an iterable
@@ -35,15 +35,22 @@ pub fn process_instruction(
         msg!("This account {} is not owned by this program {} and cannot be updated!", account.key, program_id);
     }
 
-    let nft_instructions_data = NFTAccount::try_from_slice(instruction_data).map_err(|err| {
+    let mut nft_account = NFTAccount::try_from_slice(&account.data.borrow())?;
+
+    let instruction_data_message = NFTAccount::try_from_slice(instruction_data).map_err(|err| {
         msg!("Attempt to deserialize instruction data has failed. {:?}", err);
         ProgramError::InvalidInstructionData
     })?;
+    msg!("Instruction_data message object {:?}", instruction_data_message);
 
     // Data algorithm for storing data related to nft price into account 
-    
     msg!("Attempting save data.");
+    nft_account.percent_royalty = instruction_data_message.percent_royalty;
+    nft_account.price = instruction_data_message.price;
+    nft_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
 
 
+    msg!("NFT percent_royalty {} ", nft_account.percent_royalty);
+    msg!("NFT price {} ", nft_account.price);
     Ok(())
 }
